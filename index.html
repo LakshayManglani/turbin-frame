@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TurbinFrame // Turbin3 HUD Image Frame Generator</title>
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- html-to-image CDN for client-side PNG/JPG export -->
@@ -11,7 +13,7 @@
   <!-- Google Fonts: Orbitron, Rajdhani & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@600;800;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@600;800;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
 
   <style>
     :root {
@@ -627,9 +629,15 @@
         showToast('Please select a valid image file');
         return;
       }
-      const objectUrl = URL.createObjectURL(file);
-      applyImageSrc(objectUrl, file.name);
-      showToast(`Loaded: ${file.name}`);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        applyImageSrc(e.target.result, file.name);
+        showToast(`Loaded: ${file.name}`);
+      };
+      reader.onerror = () => {
+        showToast('Failed to read image file');
+      };
+      reader.readAsDataURL(file);
     }
 
     // --- DRAG AND DROP FUNCTIONALITY ---
@@ -720,7 +728,8 @@
           quality: (format === 'jpeg') ? 0.95 : 0.98,
           backgroundColor: '#020807',
           skipAutoScale: true,
-          cacheBust: true,
+          cacheBust: false,
+          skipFonts: true,
           style: {
             transform: 'none'
           }
