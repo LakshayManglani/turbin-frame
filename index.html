@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TurbinFrame // Turbin3 HUD Image Frame Generator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- html-to-image CDN for client-side PNG/JPG export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+  <!-- Google Fonts: Orbitron, Rajdhani & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@600;800;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --neon-green: #00ff88;
+      --neon-green-bright: #00e676;
+      --neon-green-mid: #00c96b;
+      --neon-green-dark: #063d2a;
+      --dark-bg: #020807;
+      --dark-surface: #04100c;
+      --frame-bg: #030d09;
+      --glow-opacity: 0.25;
+      --corner-size: 20px;
+    }
+
+    body {
+      background-color: var(--dark-bg);
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        radial-gradient(rgba(0, 255, 136, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(2, 8, 7, 0.95), rgba(2, 8, 7, 1));
+      background-size: 100% 100%, 32px 32px, 100% 100%;
+      min-height: 100vh;
+    }
+
+    .font-hud {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .font-tech {
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    /* Chamfered corner clip paths */
+    .clip-chamfer-outer {
+      clip-path: polygon(
+        var(--corner-size) 0%,
+        calc(100% - var(--corner-size)) 0%,
+        100% var(--corner-size),
+        100% calc(100% - var(--corner-size)),
+        calc(100% - var(--corner-size)) 100%,
+        var(--corner-size) 100%,
+        0% calc(100% - var(--corner-size)),
+        0% var(--corner-size)
+      );
+    }
+
+    /* Tech diagonal hazard/accent hatch */
+    .tech-hatch {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(0, 255, 136, 0.25),
+        rgba(0, 255, 136, 0.25) 2px,
+        transparent 2px,
+        transparent 6px
+      );
+    }
+
+    .tech-hatch-subtle {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(0, 255, 136, 0.12),
+        rgba(0, 255, 136, 0.12) 1.5px,
+        transparent 1.5px,
+        transparent 5px
+      );
+    }
+
+    /* Neon glow effects */
+    .neon-glow {
+      box-shadow: 
+        0 0 25px rgba(0, 255, 136, var(--glow-opacity)),
+        inset 0 0 20px rgba(0, 255, 136, calc(var(--glow-opacity) * 0.4));
+    }
+
+    .neon-text-glow {
+      text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+    }
+
+    /* Micro pulse animations */
+    @keyframes hud-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.92); }
+    }
+
+    .animate-hud-pulse {
+      animation: hud-pulse 2.2s infinite ease-in-out;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020807;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #063d2a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00c96b;
+    }
+
+    /* Dark calendar picker styling */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.8) sepia(100%) saturate(600%) hue-rotate(95deg);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-between min-h-screen p-4 md:p-8">
+
+  <!-- TOP APP NAV -->
+  <header class="w-full max-w-6xl flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#063d2a]/80">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded border border-[#00ff88]/60 bg-[#063d2a]/40 flex items-center justify-center tech-hatch-subtle">
+        <span class="text-[#00ff88] font-hud text-lg font-black">T3</span>
+      </div>
+      <div>
+        <h1 class="font-hud font-bold text-lg md:text-xl tracking-wider text-white flex items-center gap-2">
+          TURBIN3 <span class="text-[#00ff88] text-sm md:text-base font-normal tracking-normal font-mono">// FRAME GENERATOR</span>
+        </h1>
+        <p class="text-xs text-[#00c96b]/80 font-mono">STANDALONE HUD WRAPPER • ZERO DISTORTION • ANY ASPECT RATIO</p>
+      </div>
+    </div>
+
+    <!-- Quick Action Toolbar -->
+    <div class="flex items-center flex-wrap gap-2.5">
+      <input type="file" id="file-input" accept="image/*" class="hidden">
+      
+      <button id="btn-upload" class="px-4 py-2 bg-[#063d2a] hover:bg-[#00c96b]/20 text-[#00ff88] border border-[#00ff88]/50 hover:border-[#00ff88] rounded text-xs font-semibold tracking-wider transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+        </svg>
+        CHOOSE IMAGE
+      </button>
+
+      <button id="btn-sample" class="px-3 py-2 bg-[#04100c] hover:bg-[#063d2a]/60 text-slate-300 hover:text-[#00ff88] border border-[#063d2a] hover:border-[#00c96b]/40 rounded text-xs transition-all active:scale-95">
+        RESET SAMPLE
+      </button>
+
+      <!-- Dual Format Export Button: PNG Default + JPG -->
+      <div class="inline-flex rounded shadow-[0_0_15px_rgba(0,255,136,0.35)] overflow-hidden">
+        <button id="btn-download-png" class="px-4 py-2 bg-[#00ff88] hover:bg-[#00e676] text-[#020807] font-hud font-bold text-xs tracking-wider transition-all active:scale-95 flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          EXPORT PNG
+        </button>
+        <button id="btn-download-jpg" class="px-3 py-2 bg-[#00c96b] hover:bg-[#00ff88] text-[#020807] font-hud font-bold text-xs tracking-wider border-l border-[#020807]/25 transition-all active:scale-95" title="Export as JPEG">
+          JPG
+        </button>
+      </div>
+
+      <!-- GitHub Link Button -->
+      <a href="https://github.com/LakshayManglani/turbin-frame" target="_blank" rel="noopener noreferrer" 
+         class="p-2 bg-[#04100c] hover:bg-[#063d2a]/60 text-slate-300 hover:text-[#00ff88] border border-[#063d2a] hover:border-[#00ff88]/40 rounded text-xs transition-all flex items-center gap-1.5 active:scale-95" 
+         title="View on GitHub">
+        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span class="hidden sm:inline font-mono text-[11px]">GITHUB</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- QUICK-TUNING HUD SETTINGS BAR -->
+  <section class="w-full max-w-6xl mb-6 bg-[#04100c]/90 border border-[#063d2a] rounded-lg p-3 md:p-4 backdrop-blur-sm">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs mb-3">
+      
+      <!-- Logo / Header Left text -->
+      <div class="flex flex-col gap-1">
+        <label for="input-brand-text" class="text-slate-400 font-mono text-[11px] flex justify-between">
+          <span>HUD BRAND TITLE</span>
+          <span class="text-[#00c96b]">[LIVE]</span>
+        </label>
+        <input type="text" id="input-brand-text" value="TURBIN3" 
+          class="bg-[#020807] border border-[#063d2a] focus:border-[#00ff88] text-white px-2.5 py-1.5 rounded outline-none font-hud text-xs tracking-wider transition-colors">
+      </div>
+
+      <!-- Cohort / Header Right text -->
+      <div class="flex flex-col gap-1">
+        <label for="input-cohort-text" class="text-slate-400 font-mono text-[11px] flex justify-between">
+          <span>COHORT / SUBTEXT</span>
+          <span class="text-[#00c96b]">[LIVE]</span>
+        </label>
+        <input type="text" id="input-cohort-text" value="BUILDERS COHORT • ORIENTATION" 
+          class="bg-[#020807] border border-[#063d2a] focus:border-[#00ff88] text-white px-2.5 py-1.5 rounded outline-none font-mono text-xs transition-colors">
+      </div>
+
+      <!-- Builder Username (Footer Left) -->
+      <div class="flex flex-col gap-1">
+        <label for="input-username" class="text-slate-400 font-mono text-[11px] flex justify-between">
+          <span>BUILDER USERNAME</span>
+          <span class="text-[#00c96b]">[LIVE]</span>
+        </label>
+        <input type="text" id="input-username" value="@builder" 
+          class="bg-[#020807] border border-[#063d2a] focus:border-[#00ff88] text-white px-2.5 py-1.5 rounded outline-none font-mono text-xs transition-colors"
+          placeholder="@username">
+      </div>
+
+      <!-- Cohort Date Selector (Footer Right) -->
+      <div class="flex flex-col gap-1">
+        <label for="input-date" class="text-slate-400 font-mono text-[11px] flex justify-between">
+          <span>COHORT DATE</span>
+          <span class="text-[#00c96b]">[LIVE]</span>
+        </label>
+        <input type="date" id="input-date" 
+          class="bg-[#020807] border border-[#063d2a] focus:border-[#00ff88] text-white px-2.5 py-1.5 rounded outline-none font-mono text-xs transition-colors scheme-dark">
+      </div>
+
+    </div>
+
+    <!-- Second Row: Glow, Padding & Matting Info -->
+    <div class="flex flex-wrap items-center justify-between gap-4 pt-2.5 border-t border-[#063d2a]/60 text-xs">
+      <div class="flex items-center gap-6 flex-1 min-w-[280px]">
+        
+        <div class="flex-1 flex flex-col gap-1">
+          <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+            <span>GLOW INTENSITY</span>
+            <span id="glow-val" class="text-[#00ff88]">25%</span>
+          </div>
+          <input type="range" id="slider-glow" min="0" max="60" value="25" class="accent-[#00ff88] cursor-pointer w-full">
+        </div>
+
+        <div class="w-36 flex flex-col gap-1">
+          <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+            <span>FRAME PADDING</span>
+            <span id="pad-val" class="text-[#00ff88]">M</span>
+          </div>
+          <select id="select-padding" class="bg-[#020807] border border-[#063d2a] text-slate-200 px-2 py-1 rounded text-xs outline-none focus:border-[#00ff88]">
+            <option value="compact">Compact</option>
+            <option value="normal" selected>Standard</option>
+            <option value="wide">Wide</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div class="text-[11px] text-[#00c96b]/70 font-mono hidden sm:flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#00ff88]"></span>
+        SOLID CYBER POSTER CARD • 100% OPAQUE IN PNG &amp; JPG
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN CANVAS STAGE: DRAG & DROP TARGET -->
+  <main class="w-full flex-1 flex flex-col items-center justify-center p-2 relative">
+    
+    <!-- Drag Drop Prompt Indicator (hidden until dragover) -->
+    <div id="drop-overlay" class="absolute inset-0 bg-[#020807]/85 border-2 border-dashed border-[#00ff88] rounded-2xl flex flex-col items-center justify-center z-50 pointer-events-none opacity-0 transition-opacity duration-200">
+      <div class="p-6 bg-[#04100c] border border-[#00ff88] rounded-xl text-center space-y-2 shadow-[0_0_30px_rgba(0,255,136,0.3)]">
+        <div class="w-12 h-12 mx-auto rounded-full bg-[#00ff88]/20 flex items-center justify-center text-[#00ff88]">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+          </svg>
+        </div>
+        <p class="font-hud text-[#00ff88] text-base font-bold tracking-wider">DROP TARGET IMAGE HERE</p>
+        <p class="text-xs text-slate-400 font-mono">Original pixel data preserved without distortion</p>
+      </div>
+    </div>
+
+    <!-- WRAPPER: Responsive auto-fit container -->
+    <div class="relative max-w-full flex items-center justify-center">
+
+      <!-- ======================================================== -->
+      <!-- THE CAPTURE TARGET: SOLID CYBER POSTER MATTING CARD       -->
+      <!-- ======================================================== -->
+      <div id="export-card" 
+           class="relative inline-flex flex-col items-center justify-center p-3 sm:p-5 md:p-6 rounded-lg border border-[#063d2a]/80 select-none shadow-[0_0_40px_rgba(0,0,0,0.9)]"
+           style="background: radial-gradient(circle at 50% 50%, #031c12 0%, #020b08 65%, #020807 100%); max-width: 95vw;">
+        
+        <!-- Subtle Poster Corner Target Marks -->
+        <div class="absolute top-1.5 left-1.5 text-[#00ff88]/30 font-mono text-[9px] pointer-events-none">+</div>
+        <div class="absolute top-1.5 right-1.5 text-[#00ff88]/30 font-mono text-[9px] pointer-events-none">+</div>
+        <div class="absolute bottom-1.5 left-1.5 text-[#00ff88]/30 font-mono text-[9px] pointer-events-none">+</div>
+        <div class="absolute bottom-1.5 right-1.5 text-[#00ff88]/30 font-mono text-[9px] pointer-events-none">+</div>
+
+        <!-- ======================================================== -->
+        <!-- INNER TURBIN3 HUD FRAME (CHAMFERED CONTAINER)            -->
+        <!-- ======================================================== -->
+        <div id="hud-frame" 
+             class="relative inline-flex flex-col bg-[#030d09] border-2 border-[#00ff88]/80 clip-chamfer-outer neon-glow transition-all duration-150"
+             style="max-width: 100%;">
+
+          <!-- INNER SUB-BORDER WITH CHAMFERED CORNERS -->
+          <div class="absolute inset-[3px] border border-[#00c96b]/30 pointer-events-none clip-chamfer-outer"></div>
+
+          <!-- AMBIENT EDGE LIGHTING (Top gradient sheen) -->
+          <div class="absolute top-0 inset-x-0 h-16 bg-gradient-to-b from-[#00ff88]/10 to-transparent pointer-events-none"></div>
+
+          <!-- ============================================== -->
+          <!-- CORNER ACCENTS & GEOMETRIC CUTOUTS             -->
+          <!-- ============================================== -->
+          <!-- Top-Left Corner LED Node -->
+          <div class="absolute top-[4px] left-[4px] w-2 h-2 rounded-full bg-[#00ff88] animate-hud-pulse pointer-events-none z-20"></div>
+
+          <!-- Top-Right Corner LED Node -->
+          <div class="absolute top-[4px] right-[4px] w-2 h-2 rounded-full bg-[#00ff88] animate-hud-pulse pointer-events-none z-20"></div>
+
+          <!-- Bottom-Left Corner LED Node -->
+          <div class="absolute bottom-[4px] left-[4px] w-2 h-2 rounded-full bg-[#00ff88] animate-hud-pulse pointer-events-none z-20"></div>
+
+          <!-- Bottom-Right Corner LED Node -->
+          <div class="absolute bottom-[4px] right-[4px] w-2 h-2 rounded-full bg-[#00ff88] animate-hud-pulse pointer-events-none z-20"></div>
+
+          <!-- ============================================== -->
+          <!-- 4. TOP HEADER AREA (INTEGRATED HUD HEADER)     -->
+          <!-- ============================================== -->
+          <div class="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6 pt-3.5 pb-2.5 border-b border-[#063d2a] bg-[#020b08]/80">
+            
+            <!-- Left: Turbin3 Branded Text/Logo Treatment (V3.4 Removed) -->
+            <div class="flex items-center space-x-2 shrink-0">
+              <!-- Geometric T3 Brand Symbol -->
+              <div class="relative w-5 h-5 flex items-center justify-center">
+                <div class="absolute inset-0 border border-[#00ff88] rotate-45 bg-[#00ff88]/10"></div>
+                <div class="w-1.5 h-1.5 bg-[#00ff88] rounded-sm"></div>
+              </div>
+              
+              <div class="flex items-baseline space-x-1.5">
+                <span id="display-brand-text" class="font-hud font-black text-sm sm:text-base tracking-widest text-[#00ff88] neon-text-glow">
+                  TURBIN3
+                </span>
+              </div>
+            </div>
+
+            <!-- Center Technical Accent Bus (Hidden on narrow mobile) -->
+            <div class="hidden sm:flex items-center space-x-1 flex-1 max-w-[140px] mx-2 opacity-70">
+              <div class="h-[2px] flex-1 bg-gradient-to-r from-[#00ff88]/40 via-[#00ff88] to-transparent"></div>
+              <div class="w-1.5 h-1.5 border border-[#00ff88] rotate-45"></div>
+              <div class="w-8 h-2 tech-hatch"></div>
+              <div class="h-[2px] flex-1 bg-gradient-to-l from-[#00ff88]/40 via-[#00ff88] to-transparent"></div>
+            </div>
+
+            <!-- Right: Builders Cohort / Orientation Monospace Text -->
+            <div class="flex items-center space-x-2 text-right shrink-0">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff88] opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-[#00ff88]"></span>
+              </span>
+              <span id="display-cohort-text" class="text-[10px] sm:text-xs font-mono font-medium text-[#00e676] tracking-wider uppercase">
+                BUILDERS COHORT • ORIENTATION
+              </span>
+            </div>
+          </div>
+
+          <!-- ============================================== -->
+          <!-- LATERAL HUD SIDE DETAILS & CIRCUIT TRACES      -->
+          <!-- ============================================== -->
+          <!-- Left Side Rail Decor -->
+          <div class="absolute left-1.5 top-14 bottom-14 w-2 flex flex-col justify-between items-center pointer-events-none opacity-60">
+            <div class="w-1 h-3 bg-[#00ff88]/60"></div>
+            <div class="space-y-1 my-auto">
+              <div class="w-1 h-1 rounded-full bg-[#00ff88]/40"></div>
+              <div class="w-1 h-1 rounded-full bg-[#00ff88]"></div>
+              <div class="w-1 h-1 rounded-full bg-[#00ff88]/40"></div>
+              <div class="w-1 h-4 bg-[#00ff88]/30"></div>
+            </div>
+            <div class="w-1 h-3 bg-[#00ff88]/60"></div>
+          </div>
+
+          <!-- Right Side Rail Decor -->
+          <div class="absolute right-1.5 top-14 bottom-14 w-2 flex flex-col justify-between items-center pointer-events-none opacity-60">
+            <div class="w-1 h-3 bg-[#00ff88]/60"></div>
+            <div class="space-y-1 my-auto">
+              <div class="w-1 h-4 bg-[#00ff88]/30"></div>
+              <div class="w-1 h-1 rounded-full bg-[#00ff88]/40"></div>
+              <div class="w-1 h-1 rounded-full bg-[#00ff88]"></div>
+              <div class="w-1 h-1 rounded-full bg-[#00ff88]/40"></div>
+            </div>
+            <div class="w-1 h-3 bg-[#00ff88]/60"></div>
+          </div>
+
+          <!-- ============================================== -->
+          <!-- 7. IMAGE AREA (LAYER 1: PURE, UNALTERED IMAGE) -->
+          <!-- ============================================== -->
+          <div id="image-bay-container" class="relative p-3 sm:p-5 md:p-6 transition-all duration-150">
+            
+            <!-- Sub-bezel frame around image -->
+            <div class="relative rounded border border-[#063d2a] p-1 bg-[#020807]/90 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)]">
+              
+              <!-- Corner Crosshairs over bezel perimeter (never on image content) -->
+              <div class="absolute -top-1.5 -left-1.5 text-[#00ff88] text-[10px] font-mono leading-none select-none pointer-events-none">+</div>
+              <div class="absolute -top-1.5 -right-1.5 text-[#00ff88] text-[10px] font-mono leading-none select-none pointer-events-none">+</div>
+              <div class="absolute -bottom-1.5 -left-1.5 text-[#00ff88] text-[10px] font-mono leading-none select-none pointer-events-none">+</div>
+              <div class="absolute -bottom-1.5 -right-1.5 text-[#00ff88] text-[10px] font-mono leading-none select-none pointer-events-none">+</div>
+
+              <!-- UNALTERED SOURCE IMAGE: Normal <img> element, contain, zero filter -->
+              <img id="framed-image" 
+                   src="" 
+                   alt="Target Framed Artwork" 
+                   class="block rounded-sm max-h-[58vh] max-w-full w-auto h-auto object-contain shadow-[0_0_20px_rgba(0,255,136,0.06)]"
+                   crossorigin="anonymous">
+            </div>
+
+          </div>
+
+          <!-- ============================================== -->
+          <!-- 5. BOTTOM FRAME AREA (TECHNICAL FOOTER)        -->
+          <!-- ============================================== -->
+          <div class="relative z-10 px-4 sm:px-6 py-2.5 border-t border-[#063d2a] bg-[#020b08]/80 flex items-center justify-between gap-3 text-xs font-mono">
+            
+            <!-- Bottom Left: Builder Username -->
+            <div class="flex items-center space-x-2">
+              <span class="w-1.5 h-1.5 bg-[#00ff88] rounded-sm shadow-[0_0_6px_#00ff88]"></span>
+              <span id="display-username" class="text-slate-200 font-mono tracking-wider font-semibold">
+                BUILDER // @builder
+              </span>
+            </div>
+
+            <!-- Bottom Right: Selected Cohort Date Only -->
+            <div class="flex items-center space-x-1.5 text-[#00ff88]">
+              <span class="text-[10px] text-slate-500 font-mono select-none">DATE:</span>
+              <span id="display-date" class="font-mono text-slate-300 font-medium tracking-wider"></span>
+            </div>
+
+          </div>
+
+          <!-- Bottom Angular Edge Cut Extensions -->
+          <div class="absolute bottom-0 inset-x-8 h-[2px] bg-gradient-to-r from-transparent via-[#00ff88]/40 to-transparent pointer-events-none"></div>
+
+        </div>
+        <!-- END INNER TURBIN3 HUD FRAME -->
+
+      </div>
+      <!-- END SOLID POSTER MATTING CARD -->
+
+    </div>
+
+    <!-- Live Image Metadata Status Chip -->
+    <div class="mt-4 flex items-center gap-3 text-xs text-slate-400 font-mono">
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-[#00ff88]"></span>
+        <span id="img-resolution-text">Aspect: Auto-Fit</span>
+      </span>
+      <span>•</span>
+      <span>Layer 1: Unaltered Source</span>
+      <span>•</span>
+      <span>Layer 2: Turbin3 HUD</span>
+      <span>•</span>
+      <span>Layer 3: Cyber Card</span>
+    </div>
+
+  </main>
+
+  <!-- NOTIFICATION TOAST -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-[#04100c] border border-[#00ff88] text-[#00ff88] px-4 py-2.5 rounded shadow-[0_0_20px_rgba(0,255,136,0.3)] font-mono text-xs flex items-center gap-2">
+    <svg class="w-4 h-4 text-[#00ff88]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+    </svg>
+    <span id="toast-msg">Image loaded successfully</span>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // --- DEFAULT SAMPLE IMAGE GENERATOR (OFFLINE SAFE EMBEDDED HIGH-TECH SVG) ---
+    const DEFAULT_SAMPLE_SVG = `data:image/svg+xml;utf8,` + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" width="960" height="640">
+        <defs>
+          <radialGradient id="cyber-glow" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="#063d2a" stop-opacity="0.8"/>
+            <stop offset="70%" stop-color="#02150e" stop-opacity="0.95"/>
+            <stop offset="100%" stop-color="#020807" stop-opacity="1"/>
+          </radialGradient>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#00ff88" stroke-width="0.5" stroke-opacity="0.12"/>
+          </pattern>
+          <linearGradient id="neon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#00ff88"/>
+            <stop offset="50%" stop-color="#00e676"/>
+            <stop offset="100%" stop-color="#00a854"/>
+          </linearGradient>
+        </defs>
+        
+        <!-- Background -->
+        <rect width="100%" height="100%" fill="url(#cyber-glow)"/>
+        <rect width="100%" height="100%" fill="url(#grid)"/>
+        
+        <!-- Central Tech Geometry -->
+        <g transform="translate(480, 310)">
+          <!-- Outer Hexagon -->
+          <polygon points="0,-160 138.5,-80 138.5,80 0,160 -138.5,80 -138.5,-80" fill="none" stroke="url(#neon-grad)" stroke-width="2" stroke-opacity="0.6"/>
+          
+          <!-- Inner Rotating Circles -->
+          <circle r="120" fill="none" stroke="#00ff88" stroke-width="1" stroke-dasharray="8 6" stroke-opacity="0.5"/>
+          <circle r="85" fill="none" stroke="#00e676" stroke-width="1.5" stroke-opacity="0.8"/>
+          <circle r="45" fill="#063d2a" stroke="#00ff88" stroke-width="2"/>
+          
+          <!-- Center Symbol -->
+          <path d="M -20 -15 L 20 -15 L 0 25 Z" fill="#00ff88"/>
+          
+          <!-- Crosshairs -->
+          <line x1="-220" y1="0" x2="220" y2="0" stroke="#00ff88" stroke-width="0.75" stroke-opacity="0.25" stroke-dasharray="4 8"/>
+          <line x1="0" y1="-200" x2="0" y2="200" stroke="#00ff88" stroke-width="0.75" stroke-opacity="0.25" stroke-dasharray="4 8"/>
+        </g>
+
+        <!-- Typography in Sample Graphic -->
+        <text x="480" y="520" text-anchor="middle" font-family="'Courier New', monospace" font-size="24" font-weight="bold" fill="#00ff88" letter-spacing="4">TURBIN3 BUILDER NETWORK</text>
+        <text x="480" y="550" text-anchor="middle" font-family="'Courier New', monospace" font-size="12" fill="#00c96b" letter-spacing="2">DEMO TARGET ASSET // REPLACE WITH ANY IMAGE</text>
+      </svg>
+    `);
+
+    // --- DOM REFERENCES ---
+    const framedImage = document.getElementById('framed-image');
+    const exportCard = document.getElementById('export-card');
+    const hudFrame = document.getElementById('hud-frame');
+    const imageBay = document.getElementById('image-bay-container');
+    const fileInput = document.getElementById('file-input');
+    const btnUpload = document.getElementById('btn-upload');
+    const btnSample = document.getElementById('btn-sample');
+    const btnDownloadPng = document.getElementById('btn-download-png');
+    const btnDownloadJpg = document.getElementById('btn-download-jpg');
+    const dropOverlay = document.getElementById('drop-overlay');
+
+    // Controls
+    const inputBrandText = document.getElementById('input-brand-text');
+    const inputCohortText = document.getElementById('input-cohort-text');
+    const inputUsername = document.getElementById('input-username');
+    const inputDate = document.getElementById('input-date');
+    const displayBrandText = document.getElementById('display-brand-text');
+    const displayCohortText = document.getElementById('display-cohort-text');
+    const displayUsername = document.getElementById('display-username');
+    const displayDate = document.getElementById('display-date');
+    const sliderGlow = document.getElementById('slider-glow');
+    const glowVal = document.getElementById('glow-val');
+    const selectPadding = document.getElementById('select-padding');
+    const padVal = document.getElementById('pad-val');
+    const imgResolutionText = document.getElementById('img-resolution-text');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toast-msg');
+
+    // --- NOTIFICATION HELPER ---
+    function showToast(message) {
+      toastMsg.textContent = message;
+      toast.classList.remove('opacity-0', 'translate-y-20');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-20');
+      }, 2600);
+    }
+
+    // --- DATE INITIALIZATION & FORMATTING ---
+    function formatDisplayDate(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[0]}.${parts[1]}.${parts[2]}`;
+      }
+      return dateStr;
+    }
+
+    // Default to today's date
+    const today = new Date();
+    const defaultDateStr = today.toISOString().split('T')[0];
+    inputDate.value = defaultDateStr;
+    displayDate.textContent = formatDisplayDate(defaultDateStr);
+
+    inputDate.addEventListener('input', (e) => {
+      displayDate.textContent = formatDisplayDate(e.target.value);
+    });
+
+    // --- USERNAME FORMATTING ---
+    function formatUsername(raw) {
+      let val = raw.trim();
+      if (!val) return 'BUILDER // @ANONYMOUS';
+      if (!val.startsWith('@')) {
+        val = '@' + val;
+      }
+      return `BUILDER // ${val}`;
+    }
+
+    displayUsername.textContent = formatUsername(inputUsername.value);
+
+    inputUsername.addEventListener('input', (e) => {
+      displayUsername.textContent = formatUsername(e.target.value);
+    });
+
+    // --- LOAD IMAGE HANDLER ---
+    function applyImageSrc(src, filename = 'Sample Image') {
+      framedImage.src = src;
+      framedImage.onload = () => {
+        const w = framedImage.naturalWidth || framedImage.width;
+        const h = framedImage.naturalHeight || framedImage.height;
+        const ratio = (w / h).toFixed(2);
+        imgResolutionText.textContent = `${w}×${h}px (Ratio ${ratio}:1) • ${filename}`;
+      };
+    }
+
+    // Initialize with default demo image
+    applyImageSrc(DEFAULT_SAMPLE_SVG, 'Turbin3_Demo.svg');
+
+    // --- FILE SELECTION & UPLOAD ---
+    btnUpload.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleFile(file);
+      }
+    });
+
+    btnSample.addEventListener('click', () => {
+      applyImageSrc(DEFAULT_SAMPLE_SVG, 'Turbin3_Demo.svg');
+      showToast('Sample image restored');
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select a valid image file');
+        return;
+      }
+      const objectUrl = URL.createObjectURL(file);
+      applyImageSrc(objectUrl, file.name);
+      showToast(`Loaded: ${file.name}`);
+    }
+
+    // --- DRAG AND DROP FUNCTIONALITY ---
+    let dragCounter = 0;
+    window.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      dragCounter++;
+      dropOverlay.classList.remove('opacity-0');
+      dropOverlay.classList.add('opacity-100');
+    });
+
+    window.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        dropOverlay.classList.remove('opacity-100');
+        dropOverlay.classList.add('opacity-0');
+      }
+    });
+
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      dropOverlay.classList.remove('opacity-100');
+      dropOverlay.classList.add('opacity-0');
+
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    // --- LIVE CONTROLS BINDING ---
+    inputBrandText.addEventListener('input', (e) => {
+      displayBrandText.textContent = e.target.value.trim() || 'TURBIN3';
+    });
+
+    inputCohortText.addEventListener('input', (e) => {
+      displayCohortText.textContent = e.target.value.trim() || 'BUILDERS COHORT';
+    });
+
+    sliderGlow.addEventListener('input', (e) => {
+      const val = e.target.value;
+      glowVal.textContent = `${val}%`;
+      const opacity = (val / 100).toFixed(2);
+      document.documentElement.style.setProperty('--glow-opacity', opacity);
+    });
+
+    selectPadding.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      if (mode === 'compact') {
+        imageBay.className = 'relative p-2 sm:p-3 transition-all duration-150';
+        padVal.textContent = 'S';
+      } else if (mode === 'normal') {
+        imageBay.className = 'relative p-3 sm:p-5 md:p-6 transition-all duration-150';
+        padVal.textContent = 'M';
+      } else if (mode === 'wide') {
+        imageBay.className = 'relative p-5 sm:p-8 md:p-10 transition-all duration-150';
+        padVal.textContent = 'L';
+      }
+    });
+
+    // --- ROBUST EXPORT FUNCTION (PNG or JPEG WITH 100% OPAQUE THEME BACKGROUND) ---
+    async function exportComposition(format = 'png') {
+      const activeBtn = (format === 'png') ? btnDownloadPng : btnDownloadJpg;
+      const originalText = activeBtn.innerHTML;
+      activeBtn.innerHTML = `
+        <svg class="animate-spin w-4 h-4 mr-1 text-[#020807]" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        ...
+      `;
+      btnDownloadPng.disabled = true;
+      btnDownloadJpg.disabled = true;
+
+      try {
+        if (typeof htmlToImage === 'undefined') {
+          throw new Error('html-to-image library is still loading. Please try again.');
+        }
+
+        const options = {
+          pixelRatio: 2,
+          quality: (format === 'jpeg') ? 0.95 : 0.98,
+          backgroundColor: '#020807',
+          skipAutoScale: true,
+          cacheBust: true,
+          style: {
+            transform: 'none'
+          }
+        };
+
+        let dataUrl;
+        if (format === 'jpeg' || format === 'jpg') {
+          dataUrl = await htmlToImage.toJpeg(exportCard, options);
+        } else {
+          dataUrl = await htmlToImage.toPng(exportCard, options);
+        }
+
+        const userSlug = inputUsername.value.replace(/[^a-zA-Z0-9]/g, '_') || 'builder';
+        const ext = (format === 'jpeg' || format === 'jpg') ? 'jpg' : 'png';
+        const filename = `turbin3_${userSlug}_poster.${ext}`;
+
+        const downloadLink = document.createElement('a');
+        downloadLink.download = filename;
+        downloadLink.href = dataUrl;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        downloadLink.remove();
+
+        showToast(`${ext.toUpperCase()} successfully exported!`);
+      } catch (err) {
+        console.error('Export failed:', err);
+        showToast('Export failed. Check console or try again.');
+      } finally {
+        activeBtn.innerHTML = originalText;
+        btnDownloadPng.disabled = false;
+        btnDownloadJpg.disabled = false;
+      }
+    }
+
+    btnDownloadPng.addEventListener('click', () => exportComposition('png'));
+    btnDownloadJpg.addEventListener('click', () => exportComposition('jpeg'));
+  </script>
+</body>
+</html>
